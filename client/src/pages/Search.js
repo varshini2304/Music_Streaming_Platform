@@ -5,68 +5,47 @@ function Search({ songs, onPlaySong }) {
   const [filterType, setFilterType] = useState('all'); // all, title, artist
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchSource, setSearchSource] = useState('local'); // local or musicbrainz
+  const [searchSource, setSearchSource] = useState('api'); // Always API
 
-  // Search MusicBrainz API in real-time
+  // Search MusicBrainz API ONLY (skip local database)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
-      setSearchSource('local');
+      setSearchSource('api');
       return;
     }
 
     const performSearch = async () => {
       setIsLoading(true);
       try {
-        // First, try searching local database
-        const query = searchQuery.toLowerCase().trim();
-        const localResults = songs.filter((song) => {
-          if (filterType === 'title') {
-            return song.title.toLowerCase().includes(query);
-          } else if (filterType === 'artist') {
-            return song.artist.toLowerCase().includes(query);
-          } else {
-            return (
-              song.title.toLowerCase().includes(query) ||
-              song.artist.toLowerCase().includes(query)
-            );
-          }
-        });
-
-        // If local results found, show them
-        if (localResults.length > 0) {
-          setSearchResults(localResults);
-          setSearchSource('local');
-        } else {
-          // If no local results, fetch from MusicBrainz API
-          try {
-            const response = await fetch(
-              `/api/musicbrainz/search?q=${encodeURIComponent(searchQuery)}`
-            );
-            const data = await response.json();
+        // SKIP LOCAL DATABASE - Fetch directly from MusicBrainz API
+        try {
+          const response = await fetch(
+            `/api/musicbrainz/search?q=${encodeURIComponent(searchQuery)}`
+          );
+          const data = await response.json();
+          
+          if (data.success && data.data.length > 0) {
+            // Map MusicBrainz response to match song format
+            const musicbrainzSongs = data.data.map((song) => ({
+              _id: song.mbid || song.id,
+              title: song.title,
+              artist: song.artist,
+              album: song.album,
+              url: song.url,
+              albumArt: song.albumArt,
+              duration: song.duration,
+              source: 'MusicBrainz API'
+            }));
             
-            if (data.success && data.data.length > 0) {
-              // Map MusicBrainz response to match local song format
-              const musicbrainzSongs = data.data.map((song) => ({
-                _id: song.mbid || song.id,
-                title: song.title,
-                artist: song.artist,
-                album: song.album,
-                url: song.url,
-                albumArt: song.albumArt,
-                duration: song.duration,
-                source: 'MusicBrainz'
-              }));
-              
-              setSearchResults(musicbrainzSongs);
-              setSearchSource('musicbrainz');
-            } else {
-              setSearchResults([]);
-            }
-          } catch (error) {
-            console.error('MusicBrainz API error:', error);
+            setSearchResults(musicbrainzSongs);
+            setSearchSource('api');
+          } else {
             setSearchResults([]);
           }
+        } catch (error) {
+          console.error('MusicBrainz API error:', error);
+          setSearchResults([]);
         }
       } catch (error) {
         console.error('Search error:', error);
@@ -79,7 +58,7 @@ function Search({ songs, onPlaySong }) {
     // Debounce search to avoid too many API calls
     const debounceTimer = setTimeout(performSearch, 500);
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery, filterType, songs]);
+  }, [searchQuery, filterType]);
 
   const clearSearch = () => {
     setSearchQuery('');
@@ -148,7 +127,7 @@ function Search({ songs, onPlaySong }) {
             </button>
             {isLoading && (
               <div className="px-3 py-1 text-gray-400 text-sm animate-pulse">
-                Searching...
+                Searching from MusicBrainz API...
               </div>
             )}
           </div>
@@ -163,17 +142,15 @@ function Search({ songs, onPlaySong }) {
           </h2>
           <p className="text-gray-400 text-sm mb-4">
             Found {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
-            {searchSource === 'musicbrainz' && ' from MusicBrainz (Real-time)'}  
-            {searchSource === 'local' && ' from Local Database'}
+            {searchSource === 'api' && ' from MusicBrainz API (Real-time)'}
           </p>
-
           <div className="space-y-2">
             {isLoading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin">
                   <i className="fas fa-spinner text-cyan-400 text-3xl"></i>
                 </div>
-                <p className="text-gray-400 mt-4">Searching for songs...</p>
+                <p className="text-gray-400 mt-4">Fetching from MusicBrainz API...</p>
               </div>
             ) : searchResults.length > 0 ? (
               searchResults.map((song) => (
@@ -254,7 +231,7 @@ function Search({ songs, onPlaySong }) {
             Search for songs, artists, Kannada music, movie soundtracks, and more!
           </p>
           <div className="mt-6 space-y-2 text-sm text-gray-500">
-            <p>💡 <strong>Tip:</strong> Search for Kannada songs directly - powered by MusicBrainz API</p>
+            <p>💡 <strong>Tip:</strong> Search powered by MusicBrainz API only (no local database)</p>
             <p>🎵 Try: "Rathod", "Nenapirali", "Kannada", or any artist name</p>
           </div>
         </div>
