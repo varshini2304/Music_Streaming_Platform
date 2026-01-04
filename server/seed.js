@@ -3,19 +3,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-// Define Song Schema
-const songSchema = new mongoose.Schema({
-  title: String,
-  artist: String,
-  album: String,
-  genre: String,
-  duration: String,
-  url: String,
-  albumArt: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const Song = mongoose.model('Song', songSchema);
+const Song = require('./models/Song');
 
 // Sample songs data
 const sampleSongs = [
