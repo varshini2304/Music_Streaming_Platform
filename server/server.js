@@ -44,6 +44,7 @@ app.use('/api/artists', require('./routes/artists'));
 app.use('/api/playlists', require('./routes/playlists'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/musicbrainz', require('./routes/musicbrainz'));
 
 // Socket.io Events
 io.on('connection', (socket) => {
